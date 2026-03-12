@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社長のAI参謀 - Claude Codeで、あなただけの経営参謀をつくる3ヶ月 | CORENOVA</title>
+    <meta name="description" content="経営者向け1on1 AIコンサルティング。Claude Codeを活用し、24時間対応の経営参謀を3ヶ月で構築。専任コンサルタントが完全個別対応で自走まで伴走します。">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Zen+Old+Mincho:wght@400;700;900&family=Shippori+Mincho:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --color-primary: #121e18;
+            --color-secondary: #2f4538;
+            --color-accent: #b05c37;
+            --color-accent-light: #e6dacd;
+            --color-background: #fdfcf8;
+            --color-surface: #ffffff;
+            --color-text: #2c2c2c;
+            --color-text-muted: #666666;
+            --color-border: #e2e0dc;
+
+            --font-heading: 'Zen Old Mincho', serif;
+            --font-body: 'Noto Sans JP', sans-serif;
+            --font-accent: 'Shippori Mincho', serif;
+
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--color-background);
+            color: var(--color-text);
+            line-height: 1.8;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .font-heading { font-family: var(--font-heading); font-feature-settings: "palt"; }
+        .font-accent { font-family: var(--font-accent); }
+
+        .noise-bg { position: relative; }
+        .noise-bg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+            opacity: 0.04;
+            pointer-events: none;
+            z-index: 0;
+            mix-blend-mode: overlay;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .btn-primary {
+            position: relative;
+            background: var(--color-primary);
+            color: white;
+            overflow: hidden;
+            transition: all 0.4s var(--ease-out-expo);
+            box-shadow: 0 4px 20px -5px rgba(18, 30, 24, 0.3);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px -8px rgba(18, 30, 24, 0.4);
+            background: #1a2b22;
+        }
+
+        .reveal-up {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.8s var(--ease-out-expo), transform 0.8s var(--ease-out-expo);
+        }
+        .reveal-up.visible { opacity: 1; transform: translateY(0); }
+        .delay-100 { transition-delay: 0.1s; }
+        .delay-200 { transition-delay: 0.2s; }
+        .delay-300 { transition-delay: 0.3s; }
+        .delay-400 { transition-delay: 0.4s; }
+
+        /* FAQ Accordion */
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s var(--ease-out-expo), padding 0.3s ease;
+        }
+        .faq-item.open .faq-answer { max-height: 300px; }
+        .faq-item.open .faq-icon { transform: rotate(45deg); }
+        .faq-icon { transition: transform 0.3s ease; }
+
+        /* Before/After table */
+        .ba-table td, .ba-table th {
+            padding: 1rem 1.5rem;
+            text-align: left;
+        }
+        .ba-table tr { border-bottom: 1px solid var(--color-border); }
+        .ba-table tr:last-child { border-bottom: none; }
+
+        /* Plan card highlight */
+        .plan-recommended {
+            border-color: var(--color-accent);
+            box-shadow: 0 8px 40px -10px rgba(176, 92, 55, 0.2);
+        }
+
+        /* Timeline */
+        .timeline-line {
+            position: absolute;
+            left: 27px;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: linear-gradient(to bottom, var(--color-primary), var(--color-border), transparent);
+        }
+
+        /* Session flow */
+        .session-step {
+            position: relative;
+            padding-left: 1.5rem;
+            border-left: 2px solid var(--color-border);
+        }
+        .session-step::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: 0.5rem;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--color-accent);
+        }
+    </style>
+</head>
+
+<body class="antialiased selection:bg-[#c17f59] selection:text-white">
+
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- Navigation -->
+        <nav class="fixed w-full top-0 z-50 transition-all duration-300 glass border-b border-gray-200/50" id="navbar">
+            <div class="max-w-7xl mx-auto px-6 lg:px-12">
+                <div class="flex justify-between h-20 items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-gradient-to-br from-[#1a2f23] to-[#3d5a4c] rounded-sm flex items-center justify-center text-white font-serif font-bold">C</div>
+                        <div class="flex flex-col">
+                            <span class="font-heading text-lg font-bold tracking-tight text-[#1a2f23] leading-none">CORENOVA</span>
+                            <span class="text-[9px] uppercase tracking-widest text-gray-500 leading-tight">社長のAI参謀</span>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Menu Button -->
+                    <button class="md:hidden p-2" id="mobile-menu-btn" aria-label="メニュー">
+                        <svg class="w-6 h-6 text-[#1a2f23]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+
+                    <div class="hidden md:flex space-x-10 items-center">
+                        <a href="#pain" class="text-sm font-medium tracking-wide text-gray-600 hover:text-[#1a2f23] transition-colors relative group">
+                            お悩み
+                            <span class="absolute -bottom-1 left-0 w-0 h-px bg-[#1a2f23] transition-all duration-300 group-hover:w-full"></span>
+                        </a>
+                        <a href="#service" class="text-sm font-medium tracking-wide text-gray-600 hover:text-[#1a2f23] transition-colors relative group">
+                            サービス
+                            <span class="absolute -bottom-1 left-0 w-0 h-px bg-[#1a2f23] transition-all duration-300 group-hover:w-full"></span>
+                        </a>
+                        <a href="#pricing" class="text-sm font-medium tracking-wide text-gray-600 hover:text-[#1a2f23] transition-colors relative group">
+                            料金
+                            <span class="absolute -bottom-1 left-0 w-0 h-px bg-[#1a2f23] transition-all duration-300 group-hover:w-full"></span>
+                        </a>
+                        <a href="#faq" class="text-sm font-medium tracking-wide text-gray-600 hover:text-[#1a2f23] transition-colors relative group">
+                            FAQ
+                            <span class="absolute -bottom-1 left-0 w-0 h-px bg-[#1a2f23] transition-all duration-300 group-hover:w-full"></span>
+                        </a>
+                        <a href="#cta" class="text-xs font-bold tracking-widest uppercase px-6 py-3 border border-[#1a2f23] text-[#1a2f23] hover:bg-[#1a2f23] hover:text-white transition-all duration-300 rounded-sm">
+                            無料相談
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Mobile Menu -->
+                <div class="md:hidden hidden pb-6 space-y-4" id="mobile-menu">
+                    <a href="#pain" class="block text-sm font-medium text-gray-600 hover:text-[#1a2f23]">お悩み</a>
+                    <a href="#service" class="block text-sm font-medium text-gray-600 hover:text-[#1a2f23]">サービス</a>
+                    <a href="#pricing" class="block text-sm font-medium text-gray-600 hover:text-[#1a2f23]">料金</a>
+                    <a href="#faq" class="block text-sm font-medium text-gray-600 hover:text-[#1a2f23]">FAQ</a>
+                    <a href="#cta" class="block text-center text-xs font-bold tracking-widest uppercase px-6 py-3 border border-[#1a2f23] text-[#1a2f23] rounded-sm">無料相談</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- ========================================
+             1. HERO SECTION
+        ========================================= -->
+        <header class="relative pt-32 pb-24 lg:pt-48 lg:pb-40 overflow-hidden noise-bg">
+            <div class="absolute inset-0 pointer-events-none overflow-hidden">
+                <div class="absolute -top-[20%] -right-[10%] w-[800px] h-[800px] rounded-full bg-gradient-to-br from-[#e8c4a8]/20 to-transparent blur-3xl opacity-60"></div>
+                <div class="absolute top-[40%] -left-[10%] w-[600px] h-[600px] rounded-full bg-gradient-to-tr from-[#3d5a4c]/10 to-transparent blur-3xl opacity-50"></div>
+                <div class="absolute inset-0" style="background-image: linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px); background-size: 60px 60px;"></div>
+            </div>
+
+            <div class="relative max-w-7xl mx-auto px-6 lg:px-12">
+                <div class="max-w-4xl">
+                    <div class="inline-flex items-center gap-3 px-4 py-2 bg-white/60 border border-gray-200/60 rounded-full mb-8 backdrop-blur-sm reveal-up">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#c17f59]"></span>
+                        <span class="text-xs font-bold tracking-widest uppercase text-[#5c5c5c]">経営者向け 1on1 プログラム</span>
+                    </div>
+
+                    <h1 class="font-heading text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight leading-[1.15] mb-8 text-[#1a2f23] reveal-up delay-100">
+                        Claude Codeで、<br>
+                        あなただけの<br class="md:hidden">
+                        <span class="relative inline-block">
+                            <span class="relative z-10">経営参謀</span>
+                            <span class="absolute bottom-2 left-0 w-full h-3 bg-[#e8c4a8]/60 -z-0"></span>
+                        </span>を<br class="hidden md:inline">
+                        つくる3ヶ月
+                    </h1>
+
+                    <p class="font-accent text-lg md:text-xl text-[#5c5c5c] mb-12 max-w-2xl leading-relaxed reveal-up delay-200 border-l-2 border-[#c17f59] pl-6">
+                        専任コンサルタントが1対1で個別レクチャー<br>
+                        最先端AIツールを使い、24時間対応の<br class="hidden md:inline">
+                        経営参謀を構築し、自走できる状態へ導きます
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row gap-5 reveal-up delay-300">
+                        <a href="#cta" class="btn-primary group inline-flex items-center justify-center px-8 py-4 text-base font-medium tracking-wide rounded-sm min-w-[200px]">
+                            無料相談に申し込む
+                            <svg class="ml-3 w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                            </svg>
+                        </a>
+                        <a href="#service" class="group inline-flex items-center justify-center px-8 py-4 text-base font-medium tracking-wide rounded-sm text-[#1a2f23] hover:bg-black/5 transition-colors">
+                            サービス詳細を見る
+                            <span class="ml-2 opacity-50 text-xs">&darr;</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Abstract Visual -->
+                <div class="hidden lg:block absolute top-1/2 -translate-y-1/2 right-12 w-[380px] h-[480px] bg-gradient-to-b from-white/80 to-transparent border border-white/50 backdrop-blur-md shadow-2xl skew-x-[-3deg] rotate-3 z-10 reveal-up delay-300">
+                    <div class="p-8 h-full flex flex-col relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#1a2f23] to-[#c17f59]"></div>
+                        <div class="font-heading text-xl font-bold text-[#1a2f23] mb-1">AI参謀の効果</div>
+                        <div class="text-xs text-[#5c5c5c] mb-6">3ヶ月プログラム</div>
+
+                        <div class="space-y-5 flex-1">
+                            <div class="bg-[#fdfcf8] p-4 border border-[#e2e0dc]">
+                                <div class="text-xs text-[#b05c37] font-bold tracking-widest mb-1">月間創出時間</div>
+                                <div class="font-heading text-3xl font-bold text-[#1a2f23]">20<span class="text-lg">時間以上</span></div>
+                            </div>
+                            <div class="bg-[#fdfcf8] p-4 border border-[#e2e0dc]">
+                                <div class="text-xs text-[#b05c37] font-bold tracking-widest mb-1">セッション回数</div>
+                                <div class="font-heading text-3xl font-bold text-[#1a2f23]">6<span class="text-lg">回 × 90分</span></div>
+                            </div>
+                            <div class="bg-[#fdfcf8] p-4 border border-[#e2e0dc]">
+                                <div class="text-xs text-[#b05c37] font-bold tracking-widest mb-1">完全個別対応</div>
+                                <div class="font-heading text-3xl font-bold text-[#1a2f23]">100<span class="text-lg">%カスタム</span></div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 space-y-2">
+                            <div class="flex items-center gap-3 text-xs text-[#5c5c5c]">
+                                <div class="w-4 h-4 rounded-full bg-[#1a2f23]/10 flex items-center justify-center text-[#1a2f23] font-bold text-[10px]">&check;</div>
+                                <span>経営判断の壁打ち</span>
+                            </div>
+                            <div class="flex items-center gap-3 text-xs text-[#5c5c5c]">
+                                <div class="w-4 h-4 rounded-full bg-[#1a2f23]/10 flex items-center justify-center text-[#1a2f23] font-bold text-[10px]">&check;</div>
+                                <span>データ分析の自動化</span>
+                            </div>
+                            <div class="flex items-center gap-3 text-xs text-[#5c5c5c]">
+                                <div class="w-4 h-4 rounded-full bg-[#1a2f23]/10 flex items-center justify-center text-[#1a2f23] font-bold text-[10px]">&check;</div>
+                                <span>業務効率化の実装</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="max-w-7xl mx-auto px-6 lg:px-12">
+            <div class="h-px bg-gradient-to-r from-transparent via-[#e2e0dc] to-transparent"></div>
+        </div>
+
+        <!-- ========================================
+             2. PAIN SECTION - こんなお悩みありませんか？
+        ========================================= -->
+        <section id="pain" class="py-24 lg:py-32 relative noise-bg">
+            <div class="max-w-7xl mx-auto px-6 lg:px-12">
+                <div class="text-center mb-16 reveal-up">
+                    <p class="font-accent text-sm tracking-[0.2em] uppercase mb-4 text-[#b05c37]">課題</p>
+                    <h2 class="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-[#1a2f23]">
+                        こんなお悩み、<br class="md:hidden">ありませんか？
+                    </h2>
+                </div>
+
+                <div class="max-w-3xl mx-auto space-y-6">
+                    <div class="flex items-start gap-5 bg-white p-6 md:p-8 border border-[#e2e0dc] reveal-up">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-sm bg-[#b05c37]/10 flex items-center justify-center text-[#b05c37] font-heading font-bold">1</div>
+                        <div>
+                            <h3 class="font-heading text-lg font-bold text-[#1a2f23] mb-1">経営判断を壁打ちする相手がいない</h3>
+                            <p class="text-sm text-[#5c5c5c]">相談相手は家族か同業の知人のみ。重要な判断を一人で抱えている。</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-5 bg-white p-6 md:p-8 border border-[#e2e0dc] reveal-up delay-100">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-sm bg-[#b05c37]/10 flex items-center justify-center text-[#b05c37] font-heading font-bold">2</div>
+                        <div>
+                            <h3 class="font-heading text-lg font-bold text-[#1a2f23] mb-1">データはあるが、分析する時間がない</h3>
+                            <p class="text-sm text-[#5c5c5c]">売上データ・顧客情報がExcelに眠ったまま。活用できていない焦り。</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-5 bg-white p-6 md:p-8 border border-[#e2e0dc] reveal-up delay-200">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-sm bg-[#b05c37]/10 flex items-center justify-center text-[#b05c37] font-heading font-bold">3</div>
+                        <div>
+                            <h3 class="font-heading text-lg font-bold text-[#1a2f23] mb-1">AIに興味はあるが、何から始めていいかわからない</h3>
+                            <p class="text-sm text-[#5c5c5c]">情報が多すぎて選べない。自分で触る時間もない。</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-5 bg-white p-6 md:p-8 border border-[#e2e0dc] reveal-up delay-300">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-sm bg-[#b05c37]/10 flex items-center justify-center text-[#b05c37] font-heading font-bold">4</div>
+                        <div>
+                            <h3 class="font-heading text-lg font-bold text-[#1a2f23] mb-1">日々の業務に追われ、戦略的思考の時間が取れない</h3>
+                            <p class="text-sm text-[#5c5c5c]">「考える時間」が取れず、目の前の業務をこなすだけの毎日。</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-5 bg-white p-6 md:p-8 border border-[#e2e0dc] reveal-up delay-400">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-sm bg-[#b05c37]/10 flex items-center justify-center text-[#b05c37] font-heading font-bold">5</div>
+                        <div>
+                            <h3 class="font-heading text-lg font-bold text-[#1a2f23] mb-1">「AIは社員に任せる」と思っているが、一向に進まない</h3>
+                            <p class="text-sm text-[#5c5c5c]">社長自身がAIを理解し使えることが、経営判断のスピードと質を根本から変える。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================
+             3. BEFORE / AFTER
+        ========================================= -->
+        <section class="py-24 lg:py-32 bg-[#121e18] text-white relative overflow-hidden">
+            <div class="absolute inset-0 opacity-20 pointer-events-none">
+                <div class="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-[#b05c37] filter blur-[100px]"></div>
+                <div class="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-[#3d5a4c] filter blur-[80px]"></div>
+            </div>
+
+            <div class="relative max-w-5xl mx-auto px-6 lg:px-12">
+                <div class="text-center mb-16 reveal-up">
+                    <p class="font-accent text-sm tracking-[0.2em] uppercase mb-4 text-[#e8c4a8]">変化</p>
+                    <h2 class="font-heading text-3xl md:text-4xl font-bold leading-tight">
+                        3ヶ月後に手に入る未来
+                    </h2>
+                </div>
+
+                <div class="overflow-x-auto reveal-up delay-100">
+                    <table class="w-full ba-table text-sm md:text-base">
+                        <thead>
+                            <tr class="border-b border-white/20">
+                                <th class="font-heading text-left py-4 px-4 md:px-6 text-white/50 text-sm font-normal w-1/2">Before（今）</th>
+                                <th class="font-heading text-left py-4 px-4 md:px-6 text-[#e8c4a8] text-sm font-normal w-1/2">After（3ヶ月後）</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-white/80">
+                            <tr class="border-b border-white/10">
+                                <td class="py-5 px-4 md:px-6 text-white/50">経営判断を一人で抱えている</td>
+                                <td class="py-5 px-4 md:px-6"><strong class="text-white">AIと壁打ちして多角的に意思決定できる</strong></td>
+                            </tr>
+                            <tr class="border-b border-white/10">
+                                <td class="py-5 px-4 md:px-6 text-white/50">データがExcelに眠っている</td>
+                                <td class="py-5 px-4 md:px-6"><strong class="text-white">AIで瞬時に分析・示唆を得られる</strong></td>
+                            </tr>
+                            <tr class="border-b border-white/10">
+                                <td class="py-5 px-4 md:px-6 text-white/50">AIは少し触った程度</td>
+                                <td class="py-5 px-4 md:px-6"><strong class="text-white">最新AI技術を自分で試し、事業に取り入れる力がある</strong></td>
+                            </tr>
+                            <tr>
+                                <td class="py-5 px-4 md:px-6 text-white/50">日常業務に追われている</td>
+                                <td class="py-5 px-4 md:px-6"><strong class="text-white">月20時間以上を経営に集中できる</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Urgency Message -->
+                <div class="mt-16 text-center reveal-up delay-200">
+                    <div class="inline-block bg-white/5 border border-white/10 backdrop-blur-sm px-8 py-6 max-w-2xl">
+                        <p class="font-heading text-lg md:text-xl font-bold text-[#e8c4a8] mb-3">AI格差は、もう始まっている</p>
+                        <p class="text-sm text-white/60 leading-relaxed">
+                            半年後に始めるなら、今始めた社長に<strong class="text-white">1年分の差</strong>をつけられる。<br>
+                            AI活用は「やるかやらないか」ではなく<strong class="text-white">「いつやるか」</strong>の問題。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================
+             4. SERVICE - 5つの価値提案
+        ========================================= -->
+        <section id="service" class="py-24 lg:py-32 bg-white relative overflow-hidden border-t border-[#e2e0dc]">
+            <div class="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
+                <div class="text-center mb-16 reveal-up">
+                    <p class="font-accent text-sm tracking-[0.2em] uppercase mb-4 text-[#b05c37]">価値</p>
+                    <h2 class="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-[#1a2f23]">
+                        受講者に約束する5つの価値
+                    </h2>
+                    <p class="mt-6 text-base md:text-lg max-w-2xl mx-auto text-[#5c5c5c]">
+                        専任コンサルタントが経営者に1対1で個別レクチャー。<br>
+                        「経営者自身がAIを武装する」ための完全カスタムプログラム。
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Value 1 -->
+                    <div class="bg-[#fdfcf8] p-8 border border-[#e2e0dc] reveal-up group hover:border-[#b05c37]/30 transition-colors">
+                        <div class="w-12 h-12 rounded-sm bg-[#1a2f23] flex items-center justify-center text-white font-heading font-bold text-xl mb-6 group-hover:bg-[#b05c37] transition-colors">01</div>
+                        <h3 class="font-heading text-xl font-bold text-[#1a2f23] mb-3">24時間対応の経営参謀</h3>
+                        <p class="text-sm text-[#5c5c5c] leading-relaxed">深夜でも休日でも、自社データに基づいた壁打ちができる環境を構築します。</p>
+                    </div>
+                    <!-- Value 2 -->
+                    <div class="bg-[#fdfcf8] p-8 border border-[#e2e0dc] reveal-up delay-100 group hover:border-[#b05c37]/30 transition-colors">
+                        <div class="w-12 h-12 rounded-sm bg-[#1a2f23] flex items-center justify-center text-white font-heading font-bold text-xl mb-6 group-hover:bg-[#b05c37] transition-colors">02</div>
+                        <h3 class="font-heading text-xl font-bold text-[#1a2f23] mb-3">データドリブン経営</h3>
+                        <p class="text-sm text-[#5c5c5c] leading-relaxed">勘と経験だけでなく、過去データに裏付けられた意思決定が可能になります。</p>
+                    </div>
+                    <!-- Value 3 -->
+                    <div class="bg-[#fdfcf8] p-8 border border-[#e2e0dc] reveal-up delay-200 group hover:border-[#b05c37]/30 transition-colors">
+                        <div class="w-12 h-12 rounded-sm bg-[#1a2f23] flex items-center justify-center text-white font-heading font-bold text-xl mb-6 group-hover:bg-[#b05c37] transition-colors">03</div>
+                        <h3 class="font-heading text-xl font-bold text-[#1a2f23] mb-3">時間の創出</h3>
+                        <p class="text-sm text-[#5c5c5c] leading-relaxed">定型業務のAI化で、月20時間以上を戦略的思考に振り向けられます。</p>
+                    </div>
+                    <!-- Value 4 -->
+                    <div class="bg-[#fdfcf8] p-8 border border-[#e2e0dc] reveal-up delay-100 group hover:border-[#b05c37]/30 transition-colors">
+                        <div class="w-12 h-12 rounded-sm bg-[#1a2f23] flex items-center justify-center text-white font-heading font-bold text-xl mb-6 group-hover:bg-[#b05c37] transition-colors">04</div>
+                        <h3 class="font-heading text-xl font-bold text-[#1a2f23] mb-3">自走力</h3>
+                        <p class="text-sm text-[#5c5c5c] leading-relaxed">3ヶ月後はサポートなしで、自分でAIを使いこなせる状態になります。</p>
+                    </div>
+                    <!-- Value 5 -->
+                    <div class="bg-[#fdfcf8] p-8 border border-[#e2e0dc] reveal-up delay-200 group hover:border-[#b05c37]/30 transition-colors">
+                        <div class="w-12 h-12 rounded-sm bg-[#1a2f23] flex items-center justify-center text-white font-heading font-bold text-xl mb-6 group-hover:bg-[#b05c37] transition-colors">05</div>
+                        <h3 class="font-heading text-xl font-bold text-[#1a2f23] mb-3">先行者優位</h3>
+                        <p class="text-sm text-[#5c5c5c] leading-relaxed">AI活用で競合に先んじ、業界内での差別化を実現します。</p>
+                    </div>
+                    <!-- USP -->
+                    <div class="bg-[#1a2f23] p-8 text-white reveal-up delay-300 flex flex-col justify-center">
+                        <p class="text-xs font-bold tracking-widest uppercase text-[#e8c4a8] mb-3">独自の強み</p>
+                        <h3 class="font-heading text-xl font-bold mb-3">完全カスタム × Claude Code特化</h3>
+                        <p class="text-sm text-white/60 leading-relaxed">固定カリキュラムなし。社長の業務・課題に100%合わせたレクチャー内容で、最先端のAIツールに特化。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================
+             5. SESSION CONTENT - セッション内容
+        ========================================= -->
+        <section class="py-24 lg:py-32 relative noise-bg">
+            <div class="max-w-7xl mx-auto px-6 lg:px-12">
+                <div class="text-center mb-16 reveal-up">
+                    <p class="font-accent text-sm tracking-[0.2em] uppercase mb-4 text-[#b05c37]">プログラム</p>
+                    <h2 class="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-[#1a2f23]">
+                        セッションの流れ
+                    </h2>
+                </div>
+
+                <div class="lg:grid lg:grid-cols-2 lg:gap-16">
+                    <!-- 90分セッション -->
+                    <div class="reveal-up">
+                        <h3 class="font-heading text-2xl font-bold text-[#1a2f23] mb-8">1回のセッション（90分）</h3>
+                        <div class="space-y-6">
+                            <div class="session-step pl-6 pb-6">
+                                <div class="text-xs font-bold text-[#b05c37] tracking-widest mb-1">0:00 - 0:10</div>
+                                <h4 class="font-heading text-lg font-bold text-[#1a2f23] mb-1">振り返り</h4>
+                                <p class="text-sm text-[#5c5c5c]">前回セッション以降の実践報告、つまずきポイントの確認</p>
+                            </div>
+                            <div class="session-step pl-6 pb-6">
+                                <div class="text-xs font-bold text-[#b05c37] tracking-widest mb-1">0:10 - 0:30</div>
+                                <h4 class="font-heading text-lg font-bold text-[#1a2f23] mb-1">今日のテーマ解説</h4>
+                                <p class="text-sm text-[#5c5c5c]">社長の課題に合わせたAI活用手法のレクチャー</p>
+                            </div>
+                            <div class="session-step pl-6 pb-6">
+                                <div class="text-xs font-bold text-[#b05c37] tracking-widest mb-1">0:30 - 1:10</div>
+                                <h4 class="font-heading text-lg font-bold text-[#1a2f23] mb-1">ハンズオン実践</h4>
+                                <p class="text-sm text-[#5c5c5c]">実際にClaude Codeを動かしながら、自社データ・業務で実践</p>
+                            </div>
+                            <div class="session-step pl-6 pb-6">
+                                <div class="text-xs font-bold text-[#b05c37] tracking-widest mb-1">1:10 - 1:20</div>
+                                <h4 class="font-heading text-lg font-bold text-[#1a2f23] mb-1">次回までのアクション設定</h4>
+                                <p class="text-sm text-[#5c5c5c]">次のセッションまでに試すことを具体的に決定</p>
+                            </div>
+                            <div class="session-step pl-6">
+                                <div class="text-xs font-bold text-[#b05c37] tracking-widest mb-1">1:20 - 1:30</div>
+                                <h4 class="font-heading text-lg font-bold text-[#1a2f23] mb-1">Q&A・フリートーク</h4>
+                                <p class="text-sm text-[#5c5c5c]">自由な質問・経営相談</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 初回セットアップ -->
+                    <div class="mt-16 lg:mt-0 reveal-up delay-200">
+                        <h3 class="font-heading text-2xl font-bold text-[#1a2f23] mb-8">初回セッション（セットアップ）</h3>
+                        <div class="bg-white p-8 border border-[#e2e0dc]">
+                            <div class="space-y-6">
+                                <div class="flex gap-4 items-start">
+                                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#1a2f23] text-white flex items-center justify-center text-xs font-bold">1</div>
+                                    <div>
+                                        <h4 class="font-bold text-[#1a2f23] text-sm mb-1">Anthropicアカウント作成・Claude Code契約</h4>
+                                        <p class="text-xs text-[#5c5c5c]">約10分</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-4 items-start">
+                                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#1a2f23] text-white flex items-center justify-center text-xs font-bold">2</div>
+                                    <div>
+                                        <h4 class="font-bold text-[#1a2f23] text-sm mb-1">Claude Codeのインストール・初期設定</h4>
+                                        <p class="text-xs text-[#5c5c5c]">約15分</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-4 items-start">
+                                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#1a2f23] text-white flex items-center justify-center text-xs font-bold">3</div>
+                                    <div>
+                                        <h4 class="font-bold text-[#1a2f23] text-sm mb-1">CLAUDE.md（AI参謀の基本設定）の作成</h4>
+                                        <p class="text-xs text-[#5c5c5c]">約20分</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-4 items-start">
+                                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#1a2f23] text-white flex items-center justify-center text-xs font-bold">4</div>
+                                    <div>
+                                        <h4 class="font-bold text-[#1a2f23] text-sm mb-1">社長の業務・経営課題のヒアリング</h4>
+                                        <p class="text-xs text-[#5c5c5c]">約20分</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-4 items-start">
+                                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#b05c37] text-white flex items-center justify-center text-xs font-bold">5</div>
+                                    <div>
+                                        <h4 class="font-bold text-[#1a2f23] text-sm mb-1">最初のAI壁打ち体験</h4>
+                                        <p class="text-xs text-[#5c5c5c]">約25分 — 初回から実際の経営課題でAIを体験</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- What's included -->
+                        <div class="mt-8 bg-[#fdfcf8] p-6 border border-[#e2e0dc]">
+                            <h4 class="text-xs font-bold tracking-widest text-[#b05c37] uppercase mb-4">全プランに含まれるもの</h4>
+                            <ul class="space-y-3 text-sm text-[#5c5c5c]">
+                                <li class="flex items-center gap-3">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-[#1a2f23]"></span>
+                                    隔週90分の1on1ライブセッション（オンライン）
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-[#1a2f23]"></span>
+                                    初回セッションでのClaude Code環境構築サポート
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-[#1a2f23]"></span>
+                                    セッション録画の共有
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-[#1a2f23]"></span>
+                                    CLAUDE.mdテンプレート・プロンプト集の提供
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-[#1a2f23]"></span>
+                                    完全カスタムのレクチャー内容
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================
+             6. PRICING - 料金プラン
+        ========================================= -->
+        <section id="pricing" class="py-24 lg:py-32 bg-white border-t border-[#e2e0dc]">
+            <div class="max-w-5xl mx-auto px-6 lg:px-12">
+                <div class="text-center mb-16 reveal-up">
+                    <p class="font-accent text-sm tracking-[0.2em] uppercase mb-4 text-[#b05c37]">料金</p>
+                    <h2 class="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-[#1a2f23]">
+                        料金プラン
+                    </h2>
+                    <p class="mt-6 text-sm text-[#5c5c5c]">3ヶ月一括契約。シンプルな2プラン構成。</p>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                    <!-- Basic Plan -->
+                    <div class="bg-white p-8 md:p-10 border border-[#e2e0dc] reveal-up">
+                        <div class="mb-6">
+                            <h3 class="font-heading text-2xl font-bold text-[#1a2f23]">Basic</h3>
+                            <p class="text-sm text-[#5c5c5c] mt-1">まずはAIを使いこなす基礎を固めたい方</p>
+                        </div>
+                        <div class="mb-8">
+                            <div class="flex items-end gap-1">
+                                <span class="font-heading text-4xl font-bold text-[#1a2f23]">55,000</span>
+                                <span class="text-sm text-[#5c5c5c] mb-1">円/月（税別）</span>
+                            </div>
+                            <p class="text-xs text-[#5c5c5c] mt-2">3ヶ月総額: 165,000円（税別）/ 181,500円（税込）</p>
+                        </div>
+                        <ul class="space-y-3 text-sm text-[#5c5c5c] mb-8">
+                            <li class="flex items-center gap-3">
+                                <svg class="w-4 h-4 text-[#1a2f23] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                1on1セッション 月2回&times;90分
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <svg class="w-4 h-4 text-[#1a2f23] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                環境構築サポート
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <svg class="w-4 h-4 text-[#1a2f23] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                セッション録画共有
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <svg class="w-4 h-4 text-[#1a2f23] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                テンプレート・プロンプト集
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <svg class="w-4 h-4 text-[#1a2f23] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                完全カスタムレクチャー
+                            </li>
+                            <li class="flex items-center gap-3 text-[#999]">
+                                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                チャットサポート
+                            </li>
+                        </ul>
+                        <a href="#cta" class="block w-full py-4 text-center border border-[#1a2f23] text-[#1a2f23] font-medium tracking-wide hover:bg-[#1a2f23] hover:text-white transition-all rounded-sm">
+                            無料相談で詳しく聞く
+                        </a>
+                    </div>
+
+                    <!-- Pro Plan (Recommended) -->
+                    <div class="bg-white p-8 md:p-10 border-2 plan-recommended relative reveal-up delay-100">
+                        <div class="absolute -top-4 left-8 px-4 py-1 bg-[#b05c37] text-white text-xs font-bold tracking-widest uppercase">推奨</div>
+                        <div class="mb-6">
+                            <h3 class="font-heading text-2xl font-bold text-[#1a2f23]">Pro</h3>
+                            <p class="text-sm text-[#5c5c5c] mt-1">セッション外でもいつでも相談したい方</p>
+                        </div>
+                        <div class="mb-8">
+                            <div class="flex items-end gap-1">
+                                <span class="font-heading text-4xl font-bold text-[#1a2f23]">88,000</span>
+                                <span class="text-sm text-[#5c5c5c] mb-1">円/月（税別）</span>
+                            </div>
+                            <p class="text-xs text-[#5c5c5c] mt-2">3ヶ月総額: 264,000円（税別）/ 290,400円（税込）</p>
+                        </div>
+                        <ul class="space-y-3 text-sm text-[#5c5c5c] mb-8">
+                            <li class="flex items-center gap-3">
+                                <svg class="w-4 h-4 text-[#1a2f23] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                1on1セッション 月2回&times;90分
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <svg class="w-4 h-4 text-[#1a2f23] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                環境構築サポート
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <svg class="w-4 h-4 text-[#1a2f23] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                セッション録画共有
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <svg class="w-4 h-4 text-[#1a2f23] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                テンプレート・プロンプト集
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <svg class="w-4 h-4 text-[#1a2f23] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                完全カスタムレクチャー
+                            </li>
+                            <li class="flex items-center gap-3 font-bold text-[#b05c37]">
+                                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                チャットサポート（平日対応）
+                            </li>
+                        </ul>
+                        <a href="#cta" class="btn-primary block w-full py-4 text-center font-medium tracking-wide rounded-sm">
+                            無料相談で詳しく聞く
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Claude Code利用料注記 -->
+                <div class="mt-8 text-center reveal-up">
+                    <p class="text-xs text-[#5c5c5c]">
+                        ※ Claude Code利用料（Anthropic社、月約$20〜 / 約3,000円）は別途必要です。初回セッションで契約・設定をサポートします。<br>
+                        ※ 表示価格は税別です。お支払いは銀行振込（一括払い）となります。
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================
+             7. FLOW - 導入フロー
+        ========================================= -->
+        <section class="py-24 lg:py-32 relative noise-bg">
+            <div class="max-w-5xl mx-auto px-6 lg:px-12">
+                <div class="text-center mb-16 reveal-up">
+                    <p class="font-accent text-sm tracking-[0.2em] uppercase mb-4 text-[#b05c37]">プロセス</p>
+                    <h2 class="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-[#1a2f23]">導入フロー</h2>
+                </div>
+
+                <div class="relative">
+                    <div class="timeline-line"></div>
+
+                    <!-- Step 1 -->
+                    <div class="relative pl-16 pb-16 reveal-up">
+                        <div class="absolute left-0 top-0 w-14 h-14 bg-[#1a2f23] text-white flex items-center justify-center font-heading font-bold text-lg rounded-sm shadow-lg z-10">01</div>
+                        <div class="bg-white p-6 md:p-8 border border-[#e2e0dc]">
+                            <span class="inline-block px-3 py-1 mb-3 text-xs font-bold tracking-widest text-white bg-[#1a2f23]">STEP 1</span>
+                            <h3 class="font-heading text-xl font-bold text-[#1a2f23] mb-2">無料相談（30分）</h3>
+                            <p class="text-sm text-[#5c5c5c]">課題ヒアリング・サービス説明。無理な売り込みは一切ありません。</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="relative pl-16 pb-16 reveal-up delay-100">
+                        <div class="absolute left-0 top-0 w-14 h-14 bg-white border-2 border-[#1a2f23] text-[#1a2f23] flex items-center justify-center font-heading font-bold text-lg rounded-sm z-10">02</div>
+                        <div class="bg-white p-6 md:p-8 border border-[#e2e0dc]">
+                            <span class="inline-block px-3 py-1 mb-3 text-xs font-bold tracking-widest text-[#1a2f23] bg-[#e2e0dc]">STEP 2</span>
+                            <h3 class="font-heading text-xl font-bold text-[#1a2f23] mb-2">プラン選択・ご契約</h3>
+                            <p class="text-sm text-[#5c5c5c]">Basic or Pro を選択。3ヶ月一括契約。</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="relative pl-16 pb-16 reveal-up delay-200">
+                        <div class="absolute left-0 top-0 w-14 h-14 bg-white border-2 border-[#1a2f23] text-[#1a2f23] flex items-center justify-center font-heading font-bold text-lg rounded-sm z-10">03</div>
+                        <div class="bg-white p-6 md:p-8 border border-[#e2e0dc]">
+                            <span class="inline-block px-3 py-1 mb-3 text-xs font-bold tracking-widest text-[#1a2f23] bg-[#e2e0dc]">STEP 3</span>
+                            <h3 class="font-heading text-xl font-bold text-[#1a2f23] mb-2">初回セッション</h3>
+                            <p class="text-sm text-[#5c5c5c]">環境構築・CLAUDE.md作成・初回壁打ち体験。最初のセッションから価値を実感。</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="relative pl-16 pb-16 reveal-up delay-300">
+                        <div class="absolute left-0 top-0 w-14 h-14 bg-white border-2 border-[#1a2f23] text-[#1a2f23] flex items-center justify-center font-heading font-bold text-lg rounded-sm z-10">04</div>
+                        <div class="bg-white p-6 md:p-8 border border-[#e2e0dc]">
+                            <span class="inline-block px-3 py-1 mb-3 text-xs font-bold tracking-widest text-[#1a2f23] bg-[#e2e0dc]">STEP 4</span>
+                            <h3 class="font-heading text-xl font-bold text-[#1a2f23] mb-2">隔週セッション開始</h3>
+                            <p class="text-sm text-[#5c5c5c]">月2回&times;90分の1on1レクチャー。毎回「自分の業務」で実践するので習得が早い。</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 5 -->
+                    <div class="relative pl-16 reveal-up delay-400">
+                        <div class="absolute left-0 top-0 w-14 h-14 bg-white border-2 border-[#b05c37] text-[#b05c37] flex items-center justify-center font-heading font-bold text-lg rounded-sm z-10">05</div>
+                        <div class="bg-white p-6 md:p-8 border border-[#b05c37] relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-16 h-16 bg-[#b05c37]/5 rounded-bl-full"></div>
+                            <span class="inline-block px-3 py-1 mb-3 text-xs font-bold tracking-widest text-white bg-[#b05c37]">GOAL</span>
+                            <h3 class="font-heading text-xl font-bold text-[#1a2f23] mb-2">3ヶ月後: 自走</h3>
+                            <p class="text-sm text-[#5c5c5c]">サポートなしでAIを使いこなせる状態へ。継続契約も可能です。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================
+             8. FAQ
+        ========================================= -->
+        <section id="faq" class="py-24 lg:py-32 bg-white border-t border-[#e2e0dc]">
+            <div class="max-w-3xl mx-auto px-6 lg:px-12">
+                <div class="text-center mb-16 reveal-up">
+                    <p class="font-accent text-sm tracking-[0.2em] uppercase mb-4 text-[#b05c37]">FAQ</p>
+                    <h2 class="font-heading text-3xl md:text-4xl font-bold text-[#1a2f23]">よくあるご質問</h2>
+                </div>
+
+                <div class="space-y-4 reveal-up">
+                    <!-- FAQ 1 -->
+                    <div class="faq-item border border-[#e2e0dc] bg-[#fdfcf8]">
+                        <button class="faq-toggle w-full text-left px-6 py-5 flex items-center justify-between" onclick="toggleFaq(this)">
+                            <span class="font-heading text-base font-bold text-[#1a2f23] pr-4">パソコンに詳しくなくても大丈夫ですか？</span>
+                            <span class="faq-icon text-[#b05c37] text-xl flex-shrink-0 font-light">+</span>
+                        </button>
+                        <div class="faq-answer px-6">
+                            <p class="text-sm text-[#5c5c5c] leading-relaxed pb-5">メール・Web検索など基本的なPC操作ができれば問題ありません。Claude Codeはプログラミング不要で、日本語で指示するだけで動作します。初回セッションで環境構築からすべてサポートします。</p>
+                        </div>
+                    </div>
+
+                    <!-- FAQ 2 -->
+                    <div class="faq-item border border-[#e2e0dc] bg-[#fdfcf8]">
+                        <button class="faq-toggle w-full text-left px-6 py-5 flex items-center justify-between" onclick="toggleFaq(this)">
+                            <span class="font-heading text-base font-bold text-[#1a2f23] pr-4">経営の機密情報をAIに入れて大丈夫ですか？</span>
+                            <span class="faq-icon text-[#b05c37] text-xl flex-shrink-0 font-light">+</span>
+                        </button>
+                        <div class="faq-answer px-6">
+                            <p class="text-sm text-[#5c5c5c] leading-relaxed pb-5">Claude Codeは入力データをAIの学習に使用しません。NDA対応も可能です。セッション内でセキュリティの基本もレクチャーしますのでご安心ください。</p>
+                        </div>
+                    </div>
+
+                    <!-- FAQ 3 -->
+                    <div class="faq-item border border-[#e2e0dc] bg-[#fdfcf8]">
+                        <button class="faq-toggle w-full text-left px-6 py-5 flex items-center justify-between" onclick="toggleFaq(this)">
+                            <span class="font-heading text-base font-bold text-[#1a2f23] pr-4">どんな業種でも対応できますか？</span>
+                            <span class="faq-icon text-[#b05c37] text-xl flex-shrink-0 font-light">+</span>
+                        </button>
+                        <div class="faq-answer px-6">
+                            <p class="text-sm text-[#5c5c5c] leading-relaxed pb-5">はい。製造業、サービス業、建設業、士業など業種を問いません。レクチャー内容は完全カスタムなので、あなたの業務・経営課題に合わせた内容で進めます。</p>
+                        </div>
+                    </div>
+
+                    <!-- FAQ 4 -->
+                    <div class="faq-item border border-[#e2e0dc] bg-[#fdfcf8]">
+                        <button class="faq-toggle w-full text-left px-6 py-5 flex items-center justify-between" onclick="toggleFaq(this)">
+                            <span class="font-heading text-base font-bold text-[#1a2f23] pr-4">3ヶ月で本当に使いこなせるようになりますか？</span>
+                            <span class="faq-icon text-[#b05c37] text-xl flex-shrink-0 font-light">+</span>
+                        </button>
+                        <div class="faq-answer px-6">
+                            <p class="text-sm text-[#5c5c5c] leading-relaxed pb-5">完全カスタムだから無駄がありません。毎回「自分の業務」で実践するので、習得が早いのが特徴です。3ヶ月後には、サポートなしでAIを使いこなせる自走力が身につきます。</p>
+                        </div>
+                    </div>
+
+                    <!-- FAQ 5 -->
+                    <div class="faq-item border border-[#e2e0dc] bg-[#fdfcf8]">
+                        <button class="faq-toggle w-full text-left px-6 py-5 flex items-center justify-between" onclick="toggleFaq(this)">
+                            <span class="font-heading text-base font-bold text-[#1a2f23] pr-4">月5〜8万円の価値がありますか？</span>
+                            <span class="faq-icon text-[#b05c37] text-xl flex-shrink-0 font-light">+</span>
+                        </button>
+                        <div class="faq-answer px-6">
+                            <p class="text-sm text-[#5c5c5c] leading-relaxed pb-5">月20時間の時間創出だけで、社長の時給換算で十分に元が取れます。さらに意思決定の質向上は金額では測れない価値があります。1時間あたり約18,300円の個別レクチャーです。</p>
+                        </div>
+                    </div>
+
+                    <!-- FAQ 6 -->
+                    <div class="faq-item border border-[#e2e0dc] bg-[#fdfcf8]">
+                        <button class="faq-toggle w-full text-left px-6 py-5 flex items-center justify-between" onclick="toggleFaq(this)">
+                            <span class="font-heading text-base font-bold text-[#1a2f23] pr-4">3ヶ月後、継続したい場合は？</span>
+                            <span class="faq-icon text-[#b05c37] text-xl flex-shrink-0 font-light">+</span>
+                        </button>
+                        <div class="faq-answer px-6">
+                            <p class="text-sm text-[#5c5c5c] leading-relaxed pb-5">追加契約による延長が可能です。多くの方は3ヶ月で自走できますが、さらに高度な活用を目指す場合は継続をお勧めします。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================
+             9. CTA
+        ========================================= -->
+        <section id="cta" class="py-24 lg:py-32 relative overflow-hidden bg-[#1a2f23]">
+            <div class="absolute inset-0 bg-gradient-to-br from-[#2f4538] to-[#121e18]"></div>
+
+            <div class="relative max-w-5xl mx-auto px-6 text-center text-white">
+                <div class="reveal-up">
+                    <p class="font-accent text-sm tracking-[0.2em] uppercase mb-6 text-[#e8c4a8]">始める</p>
+                    <h2 class="font-heading text-3xl md:text-4xl lg:text-5xl font-bold mb-8 leading-tight">
+                        まずは無料相談から<br>始めませんか？
+                    </h2>
+                    <div class="w-20 h-1 bg-[#b05c37] mx-auto mb-10"></div>
+                    <p class="text-base md:text-lg mb-14 max-w-2xl mx-auto text-white/70 leading-relaxed">
+                        30分の無料相談で、あなたの経営課題をヒアリング。<br>
+                        AIでどんな効果が見込めるか、具体的にお話しします。<br>
+                        <strong class="text-white">無理な売り込みは一切ありません。</strong>
+                    </p>
+                </div>
+
+                <div class="max-w-lg mx-auto reveal-up delay-100">
+                    <div class="group relative overflow-hidden bg-white/5 border border-white/10 p-8 md:p-10 rounded-sm hover:bg-white/10 transition-all duration-300">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-[#b05c37] scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+                        <h3 class="font-heading text-xl font-bold mb-3">無料相談（30分）</h3>
+                        <p class="text-sm text-white/60 mb-8">課題ヒアリング・サービス説明・ロードマップ案のご提示</p>
+                        <a href="mailto:info@corenova.jp?subject=%E7%A4%BE%E9%95%B7%E3%81%AEAI%E5%8F%82%E8%AC%80%20%E7%84%A1%E6%96%99%E7%9B%B8%E8%AB%87%E5%B8%8C%E6%9C%9B&body=%E3%81%8A%E5%90%8D%E5%89%8D%3A%0A%E4%BC%9A%E7%A4%BE%E5%90%8D%3A%0A%E3%81%94%E9%80%A3%E7%B5%A1%E5%85%88%E9%9B%BB%E8%A9%B1%E7%95%AA%E5%8F%B7%3A%0A%E7%8F%BE%E5%9C%A8%E3%81%AE%E8%AA%B2%E9%A1%8C%3A%0A"
+                           class="block w-full py-4 bg-[#b05c37] text-white font-medium tracking-wide hover:bg-[#c26a45] transition-colors rounded-sm shadow-lg shadow-black/20 text-center">
+                            無料相談に申し込む
+                        </a>
+                        <p class="mt-4 text-xs text-white/40">info@corenova.jp 宛にメールが開きます</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================
+             10. FOOTER
+        ========================================= -->
+        <footer class="py-12 bg-[#0c1410] border-t border-white/5">
+            <div class="max-w-7xl mx-auto px-6 lg:px-12">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+                    <div>
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-6 h-6 bg-[#3d5a4c] rounded-sm flex items-center justify-center text-white text-xs font-serif font-bold">C</div>
+                            <span class="text-white/80 font-heading tracking-wide">CORENOVA</span>
+                        </div>
+                        <p class="text-xs text-white/40">CORENOVA合同会社</p>
+                        <p class="text-xs text-white/40 mt-1">お問い合わせ: <a href="mailto:info@corenova.jp" class="hover:text-white/60 transition-colors">info@corenova.jp</a></p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-6 text-xs text-white/40">
+                        <a href="privacy.html" class="hover:text-white/70 transition-colors">プライバシーポリシー</a>
+                        <a href="terms.html" class="hover:text-white/70 transition-colors">利用規約</a>
+                        <a href="tokutei.html" class="hover:text-white/70 transition-colors">特定商取引法に基づく表記</a>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-6 border-t border-white/5">
+                    <p class="text-xs text-white/30 tracking-wider text-center">&copy; 2025 CORENOVA LLC. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Scroll Reveal
+        (function() {
+            const observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.1, rootMargin: '-50px' });
+
+            document.querySelectorAll('.reveal-up').forEach(function(el) {
+                observer.observe(el);
+            });
+        })();
+
+        // FAQ Accordion
+        function toggleFaq(button) {
+            var item = button.closest('.faq-item');
+            var isOpen = item.classList.contains('open');
+
+            // Close all
+            document.querySelectorAll('.faq-item').forEach(function(el) {
+                el.classList.remove('open');
+            });
+
+            // Toggle clicked
+            if (!isOpen) {
+                item.classList.add('open');
+            }
+        }
+
+        // Mobile Menu
+        document.getElementById('mobile-menu-btn').addEventListener('click', function() {
+            var menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        });
+
+        // Close mobile menu on link click
+        document.querySelectorAll('#mobile-menu a').forEach(function(link) {
+            link.addEventListener('click', function() {
+                document.getElementById('mobile-menu').classList.add('hidden');
+            });
+        });
+
+        // Navbar scroll effect
+        window.addEventListener('scroll', function() {
+            var navbar = document.getElementById('navbar');
+            if (window.scrollY > 50) {
+                navbar.style.boxShadow = '0 2px 20px rgba(0,0,0,0.05)';
+            } else {
+                navbar.style.boxShadow = 'none';
+            }
+        });
+    </script>
+
+</body>
+</html>
